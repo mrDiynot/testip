@@ -1,12 +1,19 @@
 import streamlit as st
-import requests
+from streamlit_javascript import st_javascript
 
-# Get public IP address from ipify API
-response = requests.get('https://api.ipify.org?format=json')
+st.title("Get Client IP in Streamlit")
 
-if response.status_code == 200:
-    ip_data = response.json()
-    ip_address = ip_data['ip']
-    st.write("Your IP address is:", ip_address)
+ip = st_javascript(
+    """
+    async () => {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+    }
+    """
+)
+
+if ip:
+    st.success(f"Your IP is: {ip}")
 else:
-    st.error("Failed to fetch IP address.")
+    st.info("Fetching your IP...")
