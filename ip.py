@@ -67,10 +67,8 @@ else:
     getUserIP();
     </script>
     """
-    
+    st.subheader("Client-side Detection{user_ip}")
     # Display the JavaScript component
     st.components.v1.html(js_code, height=100)
     
-    # Add a manual refresh button in case the automatic redirect doesn't work
-    if st.button("Refresh if IP doesn't load automatically"):
-        st.experimental_rerun()
+    
