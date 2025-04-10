@@ -21,75 +21,43 @@ except Exception as e:
 st.subheader("Your IP Address (detected server-side)")
 st.write(ip_address)
 
-# Create HTML/JS component to get client IP and extract from iframe
-html_code = """
-<div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
-    <p style="font-weight: bold;">Your IP Address (client-side): <span id="ip-result">Detecting...</span></p>
-</div>
-
-<div style="padding: 10px; background-color: #e6f7ff; border-radius: 5px; margin-top: 10px;">
-    <p style="font-weight: bold;">IP from iframe: <span id="iframe-ip">Loading...</span></p>
-    <iframe id="ip-iframe" src="https://api.ipify.org" width="100%" height="30" style="border:none;"></iframe>
-</div>
-
-<script>
-// Function to get client IP from API
-async function getIP() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        
-        // Display the IP
-        document.getElementById('ip-result').innerHTML = data.ip;
-        
-        // Log to console
-        console.log('Client IP:', data.ip);
-    } catch (error) {
-        document.getElementById('ip-result').innerHTML = 'Error: ' + error;
-    }
-}
-
-// Function to extract IP from iframe
-function extractIpFromIframe() {
-    const iframe = document.getElementById('ip-iframe');
+# Create HTML/JS component to get client IP without the key parameter
+def get_client_ip_component():
+    html_code = """
+    <div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
+        <p style="font-weight: bold;">Your IP Address (client-side): <span id="ip-result">Detecting...</span></p>
+    </div>
     
-    // Wait for iframe to load
-    iframe.onload = function() {
+    <script>
+    async function getIP() {
         try {
-            // Try to get the content
-            const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
-            const ipText = iframeContent.body.innerText.trim();
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
             
-            // Display the extracted IP
-            document.getElementById('iframe-ip').innerText = ipText;
-            
-            // Store in a JavaScript variable for later use
-            window.iframeIpAddress = ipText;
+            // Display the IP
+            document.getElementById('ip-result').innerHTML = data.ip;
             
             // Log to console
-            console.log('Iframe IP:', ipText);
+            console.log('Client IP:', data.ip);
         } catch (error) {
-            document.getElementById('iframe-ip').innerText = 'Error accessing iframe content';
-            console.error('Error:', error);
+            document.getElementById('ip-result').innerHTML = 'Error: ' + error;
         }
-    };
-}
+    }
+    
+    // Run when loaded
+    getIP();
+    </script>
+    """
+    
+    st.components.v1.html(html_code, height=100)
 
-// Run both functions
-getIP();
-extractIpFromIframe();
-</script>
-"""
+# Show the IP component (client-side detection)
+st.subheader("Client-side Detection")
+get_client_ip_component()
 
-# Show the combined component
-st.subheader("Client-side Detection (including iframe extraction)")
-st.components.v1.html(html_code, height=150)
-
-# For demonstration, show how to get the same data server-side
-st.subheader("Server-side Method (same as iframe content)")
-iframe_content = requests.get("https://api.ipify.org").text.strip()
-st.write(f"Content from api.ipify.org: {iframe_content}")
-st.write("Note: This is the same content that's loaded in the iframe above.")
+# Alternative method using iframe to ipify.org
+st.subheader("Alternative Method (iframe)")
+st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
 
 # Add a refresh button
 if st.button("Refresh"):
@@ -98,4 +66,3 @@ if st.button("Refresh"):
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Stored IP: {ip_address}")
-print(f"Iframe content: {iframe_content}")
