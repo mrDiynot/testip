@@ -1,7 +1,6 @@
 import streamlit as st
 from datetime import datetime
 import requests
-from BeautifulSoup import bs4
 
 st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 
@@ -60,17 +59,14 @@ get_client_ip_component()
 st.subheader("Alternative Method (iframe)")
 st.markdown('<iframe id="ip-iframe" src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
 
-# Scrape the IP from the iframe source using BeautifulSoup
-st.subheader("Scraped IP Address (using BeautifulSoup)")
+# Scrape the IP directly from the text response (no BeautifulSoup needed)
+st.subheader("Scraped IP Address")
 try:
-    # Get the content from the ipify.org website
+    # Get the content from the ipify.org website as plain text
     iframe_response = requests.get("https://api.ipify.org")
     
-    # Parse the content with BeautifulSoup
-    soup = BeautifulSoup(iframe_response.content, 'html.parser')
-    
-    # The content from ipify.org is just text (the IP address)
-    scraped_ip = soup.text.strip()
+    # The content is just the IP address as plain text
+    scraped_ip = iframe_response.text.strip()
     
     # Store in a variable and display it
     st.write(f"Scraped IP: {scraped_ip}")
