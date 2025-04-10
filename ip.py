@@ -68,10 +68,10 @@ st.subheader("IP from iframe")
 st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
 
 # Display the iframe IP (which is now the same as server-side IP)
-right_ip = st.session_state['iframe_ip']
-st.write(f"Iframe detected IP (stored in variable): {right_ip}")
 
-# Add a refresh button 
+st.write(f"Iframe detevsfhvbsdfkubvdle): {st.session_state['iframe_ip']}")
+
+# Add a refresh button
 if st.button("Refresh"):
     st.experimental_rerun()
 
