@@ -1,54 +1,76 @@
 import streamlit as st
 import requests
+import time
 
-# Check for IP in query params or session state
-user_ip = None
+# Initialize session state for tracking progress
+if 'ip_fetched' not in st.session_state:
+    st.session_state.ip_fetched = False
 
+st.title("IP Address Information")
+
+# Function to get ASN info once we have the IP
+def get_asn_info(ip):
+    try:
+        asn_response = requests.get(f"https://ipapi.co/{ip}/json/")
+        asn_data = asn_response.json()
+        
+        st.write(f"Your IP: {ip}")
+        st.write(f"ASN: {asn_data.get('asn', 'Not available')}")
+        st.write(f"Organization: {asn_data.get('org', 'Not available')}")
+        st.write(f"Country: {asn_data.get('country_name', 'Not available')}")
+        st.write(f"City: {asn_data.get('city', 'Not available')}")
+    except Exception as e:
+        st.error(f"Error getting ASN info: {e}")
+
+# Check if IP is in query params
 if "ip" in st.query_params:
     user_ip = st.query_params["ip"]
-    # Store in session state
+    st.session_state.ip_fetched = True
     st.session_state.user_ip = user_ip
-elif "user_ip" in st.session_state:
-    user_ip = st.session_state.user_ip
-
-# If we don't have the IP yet, show the JavaScript to get it
-if not user_ip:
-    st.title("Fetching your IP address...")
+    get_asn_info(user_ip)
     
-    html_code = """
+# If no IP in parameters but we have it in session state
+elif "user_ip" in st.session_state and st.session_state.ip_fetched:
+    get_asn_info(st.session_state.user_ip)
+    
+# No IP yet, use JavaScript to get it
+else:
+    st.write("Fetching your IP address...")
+    
+    # Create component with JavaScript that gets IP and sets it as a query parameter
+    js_code = """
+    <div id="ip-status">Loading your IP address...</div>
+    
     <script>
     async function getUserIP() {
         try {
+            const ipDisplay = document.getElementById('ip-status');
+            ipDisplay.innerText = "Connecting to IP service...";
+            
             const response = await fetch('https://api.ipify.org?format=json');
             const data = await response.json();
             const userIP = data.ip;
             
-            // Redirect to same page with IP as query param
-            window.location.href = window.location.pathname + '?ip=' + userIP;
+            ipDisplay.innerText = "Found IP: " + userIP + " - Loading ASN data...";
+            
+            // Add a slight delay to ensure the message is visible
+            setTimeout(() => {
+                // Redirect with IP as query parameter
+                window.location.href = window.location.pathname + '?ip=' + userIP;
+            }, 1000);
         } catch (error) {
-            console.error('Error getting IP:', error);
+            document.getElementById('ip-status').innerText = 'Error getting IP: ' + error.message;
         }
     }
     
-    // Run immediately
+    // Run when the component is loaded
     getUserIP();
     </script>
     """
-    st.components.v1.html(html_code, height=0)
-    st.stop()
-
-# If we have the IP, show it and do something with it
-st.title("User IP Information")
-st.write(f"Your IP: {user_ip}")
-
-# Use the IP to get ASN info
-try:
-    asn_response = requests.get(f"https://ipapi.co/{user_ip}/json/")
-    asn_data = asn_response.json()
     
-    st.write(f"ASN: {asn_data.get('asn', 'Not available')}")
-    st.write(f"Organization: {asn_data.get('org', 'Not available')}")
-    st.write(f"Country: {asn_data.get('country_name', 'Not available')}")
-    st.write(f"City: {asn_data.get('city', 'Not available')}")
-except Exception as e:
-    st.error(f"Error getting ASN info: {e}")
+    # Display the JavaScript component
+    st.components.v1.html(js_code, height=100)
+    
+    # Add a manual refresh button in case the automatic redirect doesn't work
+    if st.button("Refresh if IP doesn't load automatically"):
+        st.experimental_rerun()
