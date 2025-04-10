@@ -66,8 +66,8 @@ auto_ip_component = f"""
 html(auto_ip_component, height=150)
 
 # Check if we received an IP from the JavaScript
-if callback_key in st.experimental_get_query_params():
-    ip_from_js = st.experimental_get_query_params()[callback_key][0]
+if callback_key in st.query_params:
+    ip_from_js = st.query_params[callback_key]
     st.session_state.ip_address = ip_from_js
 
 # Button to manually trigger storing IP (as fallback)
