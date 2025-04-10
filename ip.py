@@ -1,17 +1,24 @@
 import streamlit as st
 from streamlit.components.v1 import html
-import json
 
 st.title("User IP Address Finder")
 
 # Initialize session state to store IP address
 if 'ip_address' not in st.session_state:
     st.session_state.ip_address = None
+    
+if 'clicked' not in st.session_state:
+    st.session_state.clicked = False
 
-# Define the JavaScript component with callback functionality
+# Function to handle click
+def on_button_click():
+    st.session_state.clicked = True
+
+# Define the JavaScript component
 ip_component = """
 <div>
     <p id="ip-display">Detecting your IP address...</p>
+    <input type="hidden" id="ip-value">
     <script>
         // Function to get IP address
         async function getUserIP() {
@@ -21,55 +28,42 @@ ip_component = """
                 document.getElementById('ip-display').innerHTML = 
                     '<strong>Your IP address is:</strong> ' + data.ip;
                 
-                // Store IP in a hidden field for easy access
-                window.userIPAddress = data.ip;
+                // Store IP in a hidden input field
+                document.getElementById('ip-value').value = data.ip;
             } catch (error) {
                 document.getElementById('ip-display').innerHTML = 
                     'Error detecting IP: ' + error.message;
             }
         }
         
-        // Function to send IP back to Streamlit
-        function sendToStreamlit() {
-            if (window.userIPAddress) {
-                // Use Streamlit's setComponentValue to communicate back to Python
-                window.parent.postMessage({
-                    type: "streamlit:setComponentValue",
-                    value: window.userIPAddress
-                }, "*");
-            }
-        }
-        
         // Initialize
         getUserIP();
-        
-        // Add event listener for messages from Streamlit
-        window.addEventListener("message", function(event) {
-            // Check if Streamlit is asking for the value
-            if (event.data.type === "streamlit:render") {
-                // Wait a bit to make sure IP is fetched
-                setTimeout(sendToStreamlit, 1000);
-            }
-        });
     </script>
 </div>
 """
 
-# Create a custom component that can return values
-def get_ip_component():
-    component_value = html(ip_component, height=100, key="ip_component")
-    return component_value
+# Display the HTML/JavaScript component
+html(ip_component, height=100)
 
-# Display the component and get its value
-user_ip = get_ip_component()
+# Create a simple form to submit the IP
+with st.form("ip_form"):
+    # You can't directly access the JS variables, so ask user to confirm
+    submit_button = st.form_submit_button("Store IP Address", on_click=on_button_click)
+    
+# Handle the form submission
+if st.session_state.clicked:
 
-# Button to store IP
-if st.button("Store IP Address"):
-    if user_ip:
-        st.session_state.ip_address = user_ip
-        st.success(f"IP Address stored: {user_ip}")
-    else:
-        st.warning("No IP address detected yet. Please wait a moment.")
+# After form submission, prompt user to enter IP manually
+if st.session_state.clicked:
+    user_ip = st.text_input("Please enter the IP address shown above:",
+                          help="Copy the IP address that was detected and paste it here")
+    
+    if st.button("Confirm IP Address"):
+        if user_ip:
+            st.session_state.ip_address = user_ip
+            st.success(f"IP Address stored: {user_ip}")
+        else:
+            st.warning("Please enter an IP address")
 
 # Display the stored IP
 if st.session_state.ip_address:
@@ -88,14 +82,17 @@ print(f"First octet: {ip_parts[0]}")
 st.markdown("---")
 st.write("""
 ### How this works:
-1. The JavaScript code gets your IP from ipify.org
-2. When you click "Store IP Address", it sends the IP back to Python
+1. The JavaScript code gets your IP from ipify.org and displays it in the browser
+2. When you click "Store IP Address", you'll be prompted to enter the IP address manually
 3. The IP is stored in Streamlit's session_state
 4. Now you can use this IP in your Python code!
 """)
 
 # Notes about the implementation
 st.info("""
-This solution uses Streamlit's component communication system to pass 
-the client-side IP address back to the server-side Python code.
+Due to the way Streamlit works with JavaScript, we can't directly pass variables from
+JavaScript to Python. This is why you need to manually copy the displayed IP.
+
+For a more advanced solution, you would need to create a custom Streamlit component
+or use an alternative approach like setting up a small API endpoint.
 """)
