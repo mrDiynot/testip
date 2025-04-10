@@ -1,12 +1,14 @@
 import streamlit as st
-
-# Create a session state variable to store the IP
-if 'user_ip' not in st.session_state:
-    st.session_state.user_ip = None
+from streamlit.components.v1 import html
+import time
 
 st.title("User IP Address Finder")
 
-# Modified JavaScript component with callback
+# Create a place to store the IP
+if 'user_ip' not in st.session_state:
+    st.session_state.user_ip = None
+
+# Modified JavaScript to redirect with query parameter
 ip_component = """
 <div>
     <p id="ip-display">Detecting your IP address...</p>
@@ -15,16 +17,20 @@ ip_component = """
             try {
                 const response = await fetch('https://api.ipify.org?format=json');
                 const data = await response.json();
-                
-                // Display the IP
                 document.getElementById('ip-display').innerHTML = 
                     '<strong>Your IP address is:</strong> ' + data.ip;
                 
-                // Send the IP to Python via Streamlit's communication API
-                const ip = data.ip;
-                if (window.parent && window.parent.Streamlit) {
-                    window.parent.Streamlit.setComponentValue(ip);
-                }
+                // Add IP to URL as query parameter and reload
+                const url = new URL(window.location.href);
+                url.searchParams.set('ip', data.ip);
+                window.history.replaceState(null, '', url);
+                
+                // Force a Streamlit rerun
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: "streamlit:forceRerun"
+                    }, "*");
+                }, 500);
             } catch (error) {
                 document.getElementById('ip-display').innerHTML = 
                     'Error detecting IP: ' + error.message;
@@ -35,15 +41,17 @@ ip_component = """
 </div>
 """
 
-# Display the component and get the return value
-result = st.components.v1.html(ip_component, height=100, key="ip_component")
+# Display the HTML/JavaScript component
+html(ip_component, height=100)
 
-# If we got an IP back from the component, store it in session state
-if result:
-    st.session_state.user_ip = result
+# Check for IP in query parameters
+query_params = st.experimental_get_query_params()
+if 'ip' in query_params:
+    st.session_state.user_ip = query_params['ip'][0]
 
-# Display the IP in Python if available
+# Display the IP if we have it
 if st.session_state.user_ip:
-    st.write(f"Python has received the IP: {st.session_state.user_ip}")
+    st.success(f"Python has received the IP: {st.session_state.user_ip}")
+    # Now you can use st.session_state.user_ip in your Python code
 else:
-    st.write("Waiting to receive IP in Python...")
+    st.info("Waiting to receive IP in Python...")
