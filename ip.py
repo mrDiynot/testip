@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_javascript import st_javascript
 
-st.title("Get Client IP in Streamlit")
+st.title("What is your public IP?")
 
 ip = st_javascript(
     """
