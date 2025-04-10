@@ -21,15 +21,34 @@ except Exception as e:
 st.subheader("Your IP Address (detected server-side)")
 st.write(ip_address)
 
-# Method 1: Client-side extraction from iframe using JavaScript
-st.subheader("IP from iframe (JavaScript method)")
-iframe_extraction_code = """
+# Create HTML/JS component to get client IP and extract from iframe
+html_code = """
 <div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
+    <p style="font-weight: bold;">Your IP Address (client-side): <span id="ip-result">Detecting...</span></p>
+</div>
+
+<div style="padding: 10px; background-color: #e6f7ff; border-radius: 5px; margin-top: 10px;">
     <p style="font-weight: bold;">IP from iframe: <span id="iframe-ip">Loading...</span></p>
     <iframe id="ip-iframe" src="https://api.ipify.org" width="100%" height="30" style="border:none;"></iframe>
 </div>
 
 <script>
+// Function to get client IP from API
+async function getIP() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        
+        // Display the IP
+        document.getElementById('ip-result').innerHTML = data.ip;
+        
+        // Log to console
+        console.log('Client IP:', data.ip);
+    } catch (error) {
+        document.getElementById('ip-result').innerHTML = 'Error: ' + error;
+    }
+}
+
 // Function to extract IP from iframe
 function extractIpFromIframe() {
     const iframe = document.getElementById('ip-iframe');
@@ -37,14 +56,14 @@ function extractIpFromIframe() {
     // Wait for iframe to load
     iframe.onload = function() {
         try {
-            // Try to get the content directly (this will work because api.ipify.org sets CORS headers)
+            // Try to get the content
             const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
             const ipText = iframeContent.body.innerText.trim();
             
             // Display the extracted IP
             document.getElementById('iframe-ip').innerText = ipText;
             
-            // Store in a JavaScript variable
+            // Store in a JavaScript variable for later use
             window.iframeIpAddress = ipText;
             
             // Log to console
@@ -56,68 +75,21 @@ function extractIpFromIframe() {
     };
 }
 
-// Run the extraction function
+// Run both functions
+getIP();
 extractIpFromIframe();
 </script>
 """
-st.components.v1.html(iframe_extraction_code, height=100)
 
-# Method 2: Create a custom component that sends data back to Streamlit
-st.subheader("IP from iframe with callback to Python")
-callback_component = """
-<div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
-    <p style="font-weight: bold;">IP from iframe (with Python callback): <span id="callback-result">Preparing...</span></p>
-    <iframe id="ip-iframe-callback" src="https://api.ipify.org" width="100%" height="30" style="display:none;"></iframe>
-</div>
+# Show the combined component
+st.subheader("Client-side Detection (including iframe extraction)")
+st.components.v1.html(html_code, height=150)
 
-<script>
-// Function to extract IP and save it to session state through Streamlit's component API
-function extractAndCallback() {
-    const iframe = document.getElementById('ip-iframe-callback');
-    
-    iframe.onload = function() {
-        try {
-            // Extract the IP from iframe
-            const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
-            const ipText = iframeContent.body.innerText.trim();
-            
-            // Display the result
-            document.getElementById('callback-result').innerText = ipText + " (saved to session state)";
-            
-            // Send the IP to Streamlit's session_state
-            // This requires the streamlit-component-lib which is automatically available
-            if (window.Streamlit) {
-                window.Streamlit.setComponentValue(ipText);
-            }
-            
-            console.log('Iframe IP for callback:', ipText);
-        } catch (error) {
-            document.getElementById('callback-result').innerText = 'Error accessing iframe';
-            console.error('Error in callback method:', error);
-        }
-    };
-}
-
-// Run callback extraction
-extractAndCallback();
-</script>
-"""
-
-# Create a custom component and get the return value
-iframe_ip = st.components.v1.html(callback_component, height=100, key="iframe_extractor")
-
-# Store the iframe IP in session state if it's returned
-if iframe_ip:
-    st.session_state.iframe_ip = iframe_ip
-    st.write(f"✅ Successfully stored iframe IP in session_state: {iframe_ip}")
-    
-    # Now you can use this IP variable in your Python code
-    # For example, let's uppercase it to show we can manipulate it
-    st.write(f"Uppercase version: {iframe_ip.upper()}")
-elif 'iframe_ip' in st.session_state:
-    st.write(f"Using previously stored iframe IP: {st.session_state.iframe_ip}")
-else:
-    st.write("Waiting for iframe IP to be extracted...")
+# For demonstration, show how to get the same data server-side
+st.subheader("Server-side Method (same as iframe content)")
+iframe_content = requests.get("https://api.ipify.org").text.strip()
+st.write(f"Content from api.ipify.org: {iframe_content}")
+st.write("Note: This is the same content that's loaded in the iframe above.")
 
 # Add a refresh button
 if st.button("Refresh"):
@@ -126,5 +98,4 @@ if st.button("Refresh"):
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Stored IP: {ip_address}")
-if 'iframe_ip' in st.session_state:
-    print(f"Iframe IP in session state: {st.session_state.iframe_ip}")
+print(f"Iframe content: {iframe_content}")
