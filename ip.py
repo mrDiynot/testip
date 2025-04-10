@@ -1,9 +1,12 @@
 import streamlit as st
-from streamlit.components.v1 import html
+
+# Create a session state variable to store the IP
+if 'user_ip' not in st.session_state:
+    st.session_state.user_ip = None
 
 st.title("User IP Address Finder")
 
-# Define the JavaScript component to get the user's IP
+# Modified JavaScript component with callback
 ip_component = """
 <div>
     <p id="ip-display">Detecting your IP address...</p>
@@ -12,8 +15,16 @@ ip_component = """
             try {
                 const response = await fetch('https://api.ipify.org?format=json');
                 const data = await response.json();
+                
+                // Display the IP
                 document.getElementById('ip-display').innerHTML = 
                     '<strong>Your IP address is:</strong> ' + data.ip;
+                
+                // Send the IP to Python via Streamlit's communication API
+                const ip = data.ip;
+                if (window.parent && window.parent.Streamlit) {
+                    window.parent.Streamlit.setComponentValue(ip);
+                }
             } catch (error) {
                 document.getElementById('ip-display').innerHTML = 
                     'Error detecting IP: ' + error.message;
@@ -24,24 +35,15 @@ ip_component = """
 </div>
 """
 
-# Display the HTML/JavaScript component
-html(ip_component, height=100)
+# Display the component and get the return value
+result = st.components.v1.html(ip_component, height=100, key="ip_component")
 
-st.markdown("---")
-st.write("""
-### How this works:
-1. The JavaScript code runs in your browser (client-side)
-2. It makes a direct request to ipify.org from your browser
-3. This returns YOUR IP address, not the server's IP
+# If we got an IP back from the component, store it in session state
+if result:
+    st.session_state.user_ip = result
 
-### Note:
-The IP address is not sent to the Streamlit backend, so you can't 
-use it in Python code without additional steps.
-""")
-
-# Show a note about server IP vs client IP
-st.info("""
-If you were to fetch the IP using Python's requests library like this:
-```python
-import requests
-response = requests.get('https://api.ipify.org?format=json')
+# Display the IP in Python if available
+if st.session_state.user_ip:
+    st.write(f"Python has received the IP: {st.session_state.user_ip}")
+else:
+    st.write("Waiting to receive IP in Python...")
