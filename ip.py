@@ -21,61 +21,103 @@ except Exception as e:
 st.subheader("Your IP Address (detected server-side)")
 st.write(ip_address)
 
-# Create HTML/JS component to get client IP without the key parameter
-def get_client_ip_component():
-    html_code = """
-    <div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
-        <p style="font-weight: bold;">Your IP Address (client-side): <span id="ip-result">Detecting...</span></p>
-    </div>
+# Method 1: Client-side extraction from iframe using JavaScript
+st.subheader("IP from iframe (JavaScript method)")
+iframe_extraction_code = """
+<div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
+    <p style="font-weight: bold;">IP from iframe: <span id="iframe-ip">Loading...</span></p>
+    <iframe id="ip-iframe" src="https://api.ipify.org" width="100%" height="30" style="border:none;"></iframe>
+</div>
+
+<script>
+// Function to extract IP from iframe
+function extractIpFromIframe() {
+    const iframe = document.getElementById('ip-iframe');
     
-    <script>
-    async function getIP() {
+    // Wait for iframe to load
+    iframe.onload = function() {
         try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
+            // Try to get the content directly (this will work because api.ipify.org sets CORS headers)
+            const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
+            const ipText = iframeContent.body.innerText.trim();
             
-            // Display the IP
-            document.getElementById('ip-result').innerHTML = data.ip;
+            // Display the extracted IP
+            document.getElementById('iframe-ip').innerText = ipText;
+            
+            // Store in a JavaScript variable
+            window.iframeIpAddress = ipText;
             
             // Log to console
-            console.log('Client IP:', data.ip);
+            console.log('Iframe IP:', ipText);
         } catch (error) {
-            document.getElementById('ip-result').innerHTML = 'Error: ' + error;
+            document.getElementById('iframe-ip').innerText = 'Error accessing iframe content';
+            console.error('Error:', error);
         }
-    }
-    
-    // Run when loaded
-    getIP();
-    </script>
-    """
-    
-    st.components.v1.html(html_code, height=100)
+    };
+}
 
-# Show the IP component (client-side detection)
-st.subheader("Client-side Detection")
-get_client_ip_component()
+// Run the extraction function
+extractIpFromIframe();
+</script>
+"""
+st.components.v1.html(iframe_extraction_code, height=100)
 
-# Alternative method using iframe to ipify.org
-st.subheader("Alternative Method (iframe)")
-st.markdown('<iframe id="ip-iframe" src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
+# Method 2: Create a custom component that sends data back to Streamlit
+st.subheader("IP from iframe with callback to Python")
+callback_component = """
+<div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
+    <p style="font-weight: bold;">IP from iframe (with Python callback): <span id="callback-result">Preparing...</span></p>
+    <iframe id="ip-iframe-callback" src="https://api.ipify.org" width="100%" height="30" style="display:none;"></iframe>
+</div>
 
-# Scrape the IP directly from the text response (no BeautifulSoup needed)
-st.subheader("Scraped IP Address")
-try:
-    # Get the content from the ipify.org website as plain text
-    iframe_response = requests.get("https://api.ipify.org")
+<script>
+// Function to extract IP and save it to session state through Streamlit's component API
+function extractAndCallback() {
+    const iframe = document.getElementById('ip-iframe-callback');
     
-    # The content is just the IP address as plain text
-    scraped_ip = iframe_response.text.strip()
+    iframe.onload = function() {
+        try {
+            // Extract the IP from iframe
+            const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
+            const ipText = iframeContent.body.innerText.trim();
+            
+            // Display the result
+            document.getElementById('callback-result').innerText = ipText + " (saved to session state)";
+            
+            // Send the IP to Streamlit's session_state
+            // This requires the streamlit-component-lib which is automatically available
+            if (window.Streamlit) {
+                window.Streamlit.setComponentValue(ipText);
+            }
+            
+            console.log('Iframe IP for callback:', ipText);
+        } catch (error) {
+            document.getElementById('callback-result').innerText = 'Error accessing iframe';
+            console.error('Error in callback method:', error);
+        }
+    };
+}
+
+// Run callback extraction
+extractAndCallback();
+</script>
+"""
+
+# Create a custom component and get the return value
+iframe_ip = st.components.v1.html(callback_component, height=100, key="iframe_extractor")
+
+# Store the iframe IP in session state if it's returned
+if iframe_ip:
+    st.session_state.iframe_ip = iframe_ip
+    st.write(f"✅ Successfully stored iframe IP in session_state: {iframe_ip}")
     
-    # Store in a variable and display it
-    st.write(f"Scraped IP: {scraped_ip}")
-    
-    # Print to console for debugging
-    print(f"Scraped IP: {scraped_ip}")
-except Exception as e:
-    st.error(f"Failed to scrape IP: {e}")
-    print(f"Error scraping IP: {e}")
+    # Now you can use this IP variable in your Python code
+    # For example, let's uppercase it to show we can manipulate it
+    st.write(f"Uppercase version: {iframe_ip.upper()}")
+elif 'iframe_ip' in st.session_state:
+    st.write(f"Using previously stored iframe IP: {st.session_state.iframe_ip}")
+else:
+    st.write("Waiting for iframe IP to be extracted...")
 
 # Add a refresh button
 if st.button("Refresh"):
@@ -84,3 +126,5 @@ if st.button("Refresh"):
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Stored IP: {ip_address}")
+if 'iframe_ip' in st.session_state:
+    print(f"Iframe IP in session state: {st.session_state.iframe_ip}")
