@@ -44,10 +44,9 @@ ip_component = """
 # Display the HTML/JavaScript component
 html(ip_component, height=100)
 
-# Check for IP in query parameters
-query_params = st.experimental_get_query_params()
-if 'ip' in query_params:
-    st.session_state.user_ip = query_params['ip'][0]
+# Check for IP in query parameters using the current API
+if 'ip' in st.query_params:
+    st.session_state.user_ip = st.query_params['ip']
 
 # Display the IP if we have it
 if st.session_state.user_ip:
