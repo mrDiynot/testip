@@ -1,54 +1,45 @@
 import streamlit as st
-from datetime import datetime
 import requests
+from datetime import datetime
 
 st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 st.title("IP Address Detector")
 
-# Detect server-side IP
+# Get server-side IP address
 try:
     response = requests.get('https://api.ipify.org?format=json')
-    ip_address = response.json()['ip']
+    ip_data = response.json()
+    ip_address = ip_data['ip']
 except Exception as e:
     ip_address = "Failed to detect"
-st.subheader("Your IP Address (detected server-side)")
+
+st.subheader("Your IP Address (server-side)")
 st.write(ip_address)
 
-# Placeholder for client-side IP
+# Show client-side detection
 st.subheader("Client-side Detection")
-client_ip_placeholder = st.empty()
 
-# HTML with postMessage
-html_code = """
+# JavaScript to get client IP and set it into a hidden text input
+st.components.v1.html("""
 <script>
-    async function getClientIP() {
+    async function getIP() {
         const res = await fetch('https://api.ipify.org?format=json');
         const data = await res.json();
         const ip = data.ip;
-        window.parent.postMessage({ type: 'CLIENT_IP', ip: ip }, '*');
+        const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+        if (input) {
+            input.value = ip;
+            const event = new Event('input', { bubbles: true });
+            input.dispatchEvent(event);
+        }
     }
-    getClientIP();
+    getIP();
 </script>
-"""
+""", height=0)
 
-st.components.v1.html(html_code, height=0)
+# Hidden text input to receive the IP
+client_ip = st.text_input("Your IP Address (client-side)", value="", label_visibility="collapsed")
 
-# Get IP from postMessage
-from streamlit_javascript import st_javascript
-
-client_ip = st_javascript(
-    """
-    new Promise((resolve) => {
-        window.addEventListener("message", (event) => {
-            if (event.data.type === "CLIENT_IP") {
-                resolve(event.data.ip);
-            }
-        }, false);
-    });
-    """
-)
-
-# Display result
+# If value was set via JS, show it
 if client_ip:
-    client_ip_placeholder.write(f"Your IP Address (client-side): {client_ip}")
-    st.session_state['client_ip'] = client_ip
+    st.success(f"Detected client-side IP: {client_ip}")
