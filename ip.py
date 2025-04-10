@@ -1,19 +1,12 @@
 import streamlit as st
-from streamlit_javascript import st_javascript
+import requests
 
-st.title("What is your public IP?")
+# Fetch IP directly from the API
+response = requests.get("https://api.ipify.org")
+ip_address = response.text
 
-ip = st_javascript(
-    """
-    async () => {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const data = await res.json();
-        return data.ip;
-    }
-    """
-)
+# Store in variable and display
+st.write(f"Your IP address is: {ip_address}")
 
-if ip:
-    st.success(f"Your IP is: {ip}")
-else:
-    st.info("Fetching your IP...")
+# If you still want to show the iframe for some reason
+st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
