@@ -1,26 +1,22 @@
 import streamlit as st
 from datetime import datetime
 import requests
+import json
 
 st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 
 st.title("IP Address Detector")
 
-# Create session state for iframe IP if it doesn't exist
+# Initialize session state
 if 'iframe_ip' not in st.session_state:
-    st.session_state['iframe_ip'] = "Not detected yet"
+    st.session_state.iframe_ip = "Not detected yet"
 
 # Get IP address server-side and store in variable
 try:
     response = requests.get('https://api.ipify.org?format=json')
     ip_data = response.json()
     ip_address = ip_data['ip']
-   
-    print(f"IP 1: {ip_address}")
-    
-    # Store this IP as the iframe IP since they're from the same source
-    st.session_state['iframe_ip'] = ip_address
-    print(f"Iframe IP stored: {ip_address}")
+    print(f"Server IP: {ip_address}")
 except Exception as e:
     ip_address = "Failed to detect"
     print(f"Error detecting IP: {e}")
@@ -63,19 +59,33 @@ def get_client_ip_component():
 st.subheader("Client-side Detection")
 get_client_ip_component()
 
-# Show iframe directly
-st.subheader("IP from iframe")
-st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
+# Create a form to manually capture iframe IP
+st.subheader("Iframe IP Capture")
 
-# Display the iframe IP (which is now the same as server-side IP)
+# Show the iframe directly
+st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50" id="ip-frame"></iframe>', unsafe_allow_html=True)
 
-st.write(f"Iframe detevsfhvbsdfkubvdle): {st.session_state['iframe_ip']}")
+# Create a form for manual entry
+with st.form("iframe_ip_form"):
+    iframe_ip_input = st.text_input("Enter the IP address shown in the iframe above:", 
+                                   value=st.session_state.get('iframe_ip', ''))
+    
+    submitted = st.form_submit_button("Save IP to variable")
+    
+    if submitted:
+        st.session_state.iframe_ip = iframe_ip_input
+        st.success(f"Successfully saved IP: {iframe_ip_input} to variable")
 
-# Add a refresh button
-if st.button("Refresh"):
+# Display the stored iframe IP
+st.subheader("Stored IP Variables")
+st.write(f"Server-side IP variable: {ip_address}")
+st.write(f"Iframe IP variable: {st.session_state.get('iframe_ip', 'Not set yet')}")
+
+# Add a refresh button outside the form
+if st.button("Refresh Page"):
     st.experimental_rerun()
 
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Server IP: {ip_address}")
-print(f"Iframe IP: {st.session_state['iframe_ip']}")
+print(f"Iframe IP (from session state): {st.session_state.get('iframe_ip', 'Not detected yet')}")
