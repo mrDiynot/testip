@@ -1,13 +1,12 @@
 import streamlit as st
 from datetime import datetime
 import requests
-import json
 
 st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 
 st.title("IP Address Detector")
 
-# Initialize session state
+# Initialize a session state variable to store the IP
 if 'iframe_ip' not in st.session_state:
     st.session_state.iframe_ip = "Not detected yet"
 
@@ -16,7 +15,7 @@ try:
     response = requests.get('https://api.ipify.org?format=json')
     ip_data = response.json()
     ip_address = ip_data['ip']
-    print(f"Server IP: {ip_address}")
+    print(f"IP 1: {ip_address}")
 except Exception as e:
     ip_address = "Failed to detect"
     print(f"Error detecting IP: {e}")
@@ -25,7 +24,7 @@ except Exception as e:
 st.subheader("Your IP Address (detected server-side)")
 st.write(ip_address)
 
-# Create HTML/JS component to get client IP without the key parameter
+# Create a function to get client IP and store it in session state
 def get_client_ip_component():
     html_code = """
     <div style="padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
@@ -41,8 +40,18 @@ def get_client_ip_component():
             // Display the IP
             document.getElementById('ip-result').innerHTML = data.ip;
             
+            // Store IP in sessionStorage for Streamlit to access
+            sessionStorage.setItem('detected_ip', data.ip);
+            
             // Log to console
             console.log('Client IP:', data.ip);
+            
+            // Send to Streamlit via streamlit:component:message
+            const message = {ip: data.ip};
+            window.parent.postMessage({
+                type: "streamlit:setComponentValue",
+                value: message
+            }, "*");
         } catch (error) {
             document.getElementById('ip-result').innerHTML = 'Error: ' + error;
         }
@@ -53,39 +62,38 @@ def get_client_ip_component():
     </script>
     """
     
-    st.components.v1.html(html_code, height=100)
+    # Use the component with a callback to capture the IP
+    component_value = st.components.v1.html(html_code, height=100, key="ip_component")
+    
+    # If we got a value back, store it
+    if component_value:
+        if 'ip' in component_value:
+            st.session_state.iframe_ip = component_value['ip']
+            print(f"IP from component stored: {st.session_state.iframe_ip}")
 
 # Show the IP component (client-side detection)
 st.subheader("Client-side Detection")
 get_client_ip_component()
 
-# Create a form to manually capture iframe IP
-st.subheader("Iframe IP Capture")
+# Display the stored IP from iframe/component
+st.subheader("Stored IP Address (from client-side)")
+st.write(st.session_state.iframe_ip)
 
-# Show the iframe directly
-st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50" id="ip-frame"></iframe>', unsafe_allow_html=True)
-
-# Create a form for manual entry
-with st.form("iframe_ip_form"):
-    iframe_ip_input = st.text_input("Enter the IP address shown in the iframe above:", 
-                                   value=st.session_state.get('iframe_ip', ''))
+# Add a section to show we can use the variable
+st.subheader("Using the stored IP variable")
+if st.session_state.iframe_ip != "Not detected yet":
+    st.success(f"Successfully captured IP: {st.session_state.iframe_ip}")
     
-    submitted = st.form_submit_button("Save IP to variable")
-    
-    if submitted:
-        st.session_state.iframe_ip = iframe_ip_input
-        st.success(f"Successfully saved IP: {iframe_ip_input} to variable")
+    # Example of using the IP
+    st.write(f"You can now use this IP address ({st.session_state.iframe_ip}) in your application logic!")
+else:
+    st.warning("Waiting for IP detection to complete... Try refreshing the page.")
 
-# Display the stored iframe IP
-st.subheader("Stored IP Variables")
-st.write(f"Server-side IP variable: {ip_address}")
-st.write(f"Iframe IP variable: {st.session_state.get('iframe_ip', 'Not set yet')}")
-
-# Add a refresh button outside the form
-if st.button("Refresh Page"):
+# Add a refresh button
+if st.button("Refresh"):
     st.experimental_rerun()
 
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-print(f"Server IP: {ip_address}")
-print(f"Iframe IP (from session state): {st.session_state.get('iframe_ip', 'Not detected yet')}")
+print(f"Stored IP: {ip_address}")
+print(f"Iframe IP: {st.session_state.iframe_ip}")
