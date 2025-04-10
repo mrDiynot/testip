@@ -1,16 +1,12 @@
 import streamlit as st
 from streamlit.components.v1 import html
-import json
 
-# Initialize session state for IP if not already set
-if 'user_ip' not in st.session_state:
-    st.session_state.user_ip = None
+st.title("User IP Address")
 
-st.title("User IP Address Demo")
-
-# JavaScript to get user IP and store in session state
-ip_html = """
-<div id="ip-display">Loading your IP address...</div>
+# Create a simple component with JavaScript that will fetch the IP
+ip_component = html("""
+<div id="ip-display">Loading IP...</div>
+<div id="ip-value" style="display:none;"></div>
 
 <script>
 async function getUserIP() {
@@ -19,40 +15,48 @@ async function getUserIP() {
         const data = await response.json();
         const userIP = data.ip;
         
-        // Display IP in the component
+        // Display IP
         document.getElementById('ip-display').innerText = 'Your IP: ' + userIP;
         
-        // Send IP to Streamlit backend using streamlit-component-lib
-        const stringifiedData = JSON.stringify({ip: userIP});
+        // Store IP in a hidden div for extraction
+        document.getElementById('ip-value').innerText = userIP;
         
-        // Use window.parent.postMessage to send data back to Streamlit
-        window.parent.postMessage({
-            type: "streamlit:setComponentValue",
-            value: stringifiedData
-        }, "*");
+        // Force rerun of Streamlit app
+        if (window.parent && window.parent.document) {
+            const buttons = window.parent.document.querySelectorAll('button');
+            for (const button of buttons) {
+                if (button.innerText === 'Rerun') {
+                    button.click();
+                    break;
+                }
+            }
+        }
     } catch (error) {
-        document.getElementById('ip-display').innerText = 'Error getting IP';
-        console.error(error);
+        document.getElementById('ip-display').innerText = 'Error: ' + error.message;
     }
 }
 
 getUserIP();
 </script>
-"""
+""", height=80)
 
-# Render the component and capture its return value
-component_value = html(ip_html, height=50)
+# Add a button to manually trigger getting IP value
+if st.button("Get IP to Python"):
+    st.rerun()
 
-# If component returns a value, update session state
-if component_value:
+# Create a text input for manual entry
+manual_ip = st.text_input("Or copy your IP here manually from the display above:")
+
+if manual_ip:
+    st.write(f"Using IP: {manual_ip}")
+    # Now you can use manual_ip as a Python variable
+    # For example, to get ASN info:
+    import requests
     try:
-        # Parse the JSON string returned from the component
-        data = json.loads(component_value)
-        st.session_state.user_ip = data.get('ip')
-    except:
-        st.error("Could not parse IP data from component")
-
-# Display and use the IP stored in session state
-if st.session_state.user_ip:
-    st.write(f"Your IP address is: {st.session_state.user_ip}")
-    # Now you can use st.session_state.user_ip in your Python code
+        asn_response = requests.get(f"https://ipapi.co/{manual_ip}/json/")
+        asn_data = asn_response.json()
+        st.write(f"ASN: {asn_data.get('asn', 'Not available')}")
+        st.write(f"Organization: {asn_data.get('org', 'Not available')}")
+        st.write(f"Country: {asn_data.get('country_name', 'Not available')}")
+    except Exception as e:
+        st.error(f"Error getting ASN info: {e}")
