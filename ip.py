@@ -1,62 +1,56 @@
 import streamlit as st
-from streamlit.components.v1 import html
+import requests
+from urllib.parse import parse_qs
 
-st.title("User IP Address")
+# Check for IP in query params or session state
+query_params = st.experimental_get_query_params()
+user_ip = None
 
-# Create a simple component with JavaScript that will fetch the IP
-ip_component = html("""
-<div id="ip-display">Loading IP...</div>
-<div id="ip-value" style="display:none;"></div>
+if "ip" in query_params:
+    user_ip = query_params["ip"][0]
+    # Store in session state
+    st.session_state.user_ip = user_ip
+elif "user_ip" in st.session_state:
+    user_ip = st.session_state.user_ip
 
-<script>
-async function getUserIP() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const userIP = data.ip;
-        
-        // Display IP
-        document.getElementById('ip-display').innerText = 'Your IP: ' + userIP;
-        
-        // Store IP in a hidden div for extraction
-        document.getElementById('ip-value').innerText = userIP;
-        
-        // Force rerun of Streamlit app
-        if (window.parent && window.parent.document) {
-            const buttons = window.parent.document.querySelectorAll('button');
-            for (const button of buttons) {
-                if (button.innerText === 'Rerun') {
-                    button.click();
-                    break;
-                }
-            }
+# If we don't have the IP yet, show the JavaScript to get it
+if not user_ip:
+    st.title("Fetching your IP address...")
+    
+    html_code = """
+    <script>
+    async function getUserIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            const userIP = data.ip;
+            
+            // Redirect to same page with IP as query param
+            window.location.href = window.location.pathname + '?ip=' + userIP;
+        } catch (error) {
+            console.error('Error getting IP:', error);
         }
-    } catch (error) {
-        document.getElementById('ip-display').innerText = 'Error: ' + error.message;
     }
-}
+    
+    // Run immediately
+    getUserIP();
+    </script>
+    """
+    st.components.v1.html(html_code, height=0)
+    st.stop()
 
-getUserIP();
-</script>
-""", height=80)
+# If we have the IP, show it and do something with it
+st.title("User IP Information")
+st.write(f"Your IP: {user_ip}")
 
-# Add a button to manually trigger getting IP value
-if st.button("Get IP to Python"):
-    st.rerun()
-
-# Create a text input for manual entry
-manual_ip = st.text_input("Or copy your IP here manually from the display above:")
-
-if manual_ip:
-    st.write(f"Using IP: {manual_ip}")
-    # Now you can use manual_ip as a Python variable
-    # For example, to get ASN info:
-    import requests
-    try:
-        asn_response = requests.get(f"https://ipapi.co/{manual_ip}/json/")
-        asn_data = asn_response.json()
-        st.write(f"ASN: {asn_data.get('asn', 'Not available')}")
-        st.write(f"Organization: {asn_data.get('org', 'Not available')}")
-        st.write(f"Country: {asn_data.get('country_name', 'Not available')}")
-    except Exception as e:
-        st.error(f"Error getting ASN info: {e}")
+# Use the IP to get ASN info
+try:
+    asn_response = requests.get(f"https://ipapi.co/{user_ip}/json/")
+    asn_data = asn_response.json()
+    
+    st.write(f"ASN: {asn_data.get('asn', 'Not available')}")
+    st.write(f"Organization: {asn_data.get('org', 'Not available')}")
+    st.write(f"Country: {asn_data.get('country_name', 'Not available')}")
+    st.write(f"City: {asn_data.get('city', 'Not available')}")
+except Exception as e:
+    st.error(f"Error getting ASN info: {e}")
