@@ -1,51 +1,47 @@
 import streamlit as st
+from streamlit.components.v1 import html
+
+st.title("User IP Address Finder")
+
+# Define the JavaScript component to get the user's IP
+ip_component = """
+<div>
+    <p id="ip-display">Detecting your IP address...</p>
+    <script>
+        async function getUserIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                document.getElementById('ip-display').innerHTML = 
+                    '<strong>Your IP address is:</strong> ' + data.ip;
+            } catch (error) {
+                document.getElementById('ip-display').innerHTML = 
+                    'Error detecting IP: ' + error.message;
+            }
+        }
+        getUserIP();
+    </script>
+</div>
+"""
+
+# Display the HTML/JavaScript component
+html(ip_component, height=100)
+
+st.markdown("---")
+st.write("""
+### How this works:
+1. The JavaScript code runs in your browser (client-side)
+2. It makes a direct request to ipify.org from your browser
+3. This returns YOUR IP address, not the server's IP
+
+### Note:
+The IP address is not sent to the Streamlit backend, so you can't 
+use it in Python code without additional steps.
+""")
+
+# Show a note about server IP vs client IP
+st.info("""
+If you were to fetch the IP using Python's requests library like this:
+```python
 import requests
-
-st.title("IP Address Finder")
-
-# Initialize session state
-if 'ip_address' not in st.session_state:
-    st.session_state.ip_address = None
-
-# Display current IP if we have it
-if st.session_state.ip_address:
-    st.success(f"Your IP address is: {st.session_state.ip_address}")
-else:
-    st.info("Click the button below to fetch your IP address")
-
-# Button to fetch IP
-if st.button("Get My IP Address"):
-    try:
-        # Make a request to the IP API service
-        response = requests.get('https://api.ipify.org?format=json')
-        data = response.json()
-        
-        # Store the IP in session state
-        st.session_state.ip_address = data['ip']
-        
-        # Display the result
-        st.success(f"Your IP address is: {st.session_state.ip_address}")
-        
-        # Show how to use this in Python code
-        st.subheader("Using the IP in Python code:")
-        st.code(f"""
-# Now you can use this IP address in your Python code
-ip_address = "{st.session_state.ip_address}"
-
-# Example of how you might use it
-print(f"User IP: {ip_address}")
-
-# You could save it to a database
-# db.save_user_ip(ip_address)
-
-# Or use it for geolocation
-# location = get_location(ip_address)
-        """)
-        
-    except Exception as e:
-        st.error(f"Error fetching IP: {e}")
-
-# If you need to access query parameters, use st.query_params instead of st.experimental_get_query_params
-# For example:
-if 'ip' in st.query_params:
-    st.write(f"IP from query parameters: {st.query_params['ip']}")
+response = requests.get('https://api.ipify.org?format=json')
