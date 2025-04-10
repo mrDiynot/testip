@@ -1,13 +1,11 @@
 import streamlit as st
 import requests
-from urllib.parse import parse_qs
 
 # Check for IP in query params or session state
-query_params = st.experimental_get_query_params()
 user_ip = None
 
-if "ip" in query_params:
-    user_ip = query_params["ip"][0]
+if "ip" in st.query_params:
+    user_ip = st.query_params["ip"]
     # Store in session state
     st.session_state.user_ip = user_ip
 elif "user_ip" in st.session_state:
