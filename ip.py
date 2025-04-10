@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import requests
-from bs4 import BeautifulSoup
+from BeautifulSoup import bs4
 
 st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 
