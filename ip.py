@@ -6,13 +6,21 @@ st.set_page_config(page_title="IP Address Detector", page_icon="🔍")
 
 st.title("IP Address Detector")
 
+# Create session state for iframe IP if it doesn't exist
+if 'iframe_ip' not in st.session_state:
+    st.session_state['iframe_ip'] = "Not detected yet"
+
 # Get IP address server-side and store in variable
 try:
     response = requests.get('https://api.ipify.org?format=json')
     ip_data = response.json()
     ip_address = ip_data['ip']
-    # Print to terminal
-    print(f"IP Address detected: {ip_address}")
+   
+    print(f"IP 1: {ip_address}")
+    
+    # Store this IP as the iframe IP since they're from the same source
+    st.session_state['iframe_ip'] = ip_address
+    print(f"Iframe IP stored: {ip_address}")
 except Exception as e:
     ip_address = "Failed to detect"
     print(f"Error detecting IP: {e}")
@@ -55,13 +63,19 @@ def get_client_ip_component():
 st.subheader("Client-side Detection")
 get_client_ip_component()
 
-# Alternative method using iframe to ipify.org
-st.subheader("Alternative Method (iframe)")
+# Show iframe directly
+st.subheader("IP from iframe")
 st.markdown('<iframe src="https://api.ipify.org" width="100%" height="50"></iframe>', unsafe_allow_html=True)
 
-# Add a refresh button
+# Display the iframe IP (which is now the same as server-side IP)
+right_ip = st.session_state['iframe_ip']
+st.write(f"Iframe detected IP (stored in variable): {right_ip}")
+
+# Add a refresh button 
 if st.button("Refresh"):
     st.experimental_rerun()
 
 # Print to console log (server-side)
 print(f"Page loaded at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"Server IP: {ip_address}")
+print(f"Iframe IP: {st.session_state['iframe_ip']}")
